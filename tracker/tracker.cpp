@@ -19,6 +19,7 @@
 #include <algorithm>
 
 using namespace std;
+#define ll long long int
 
 class Package{
 public:
@@ -38,6 +39,7 @@ public:
 	string ip;
 	int groupid;
 	int noofchunks;
+	ll filesize;
 	vector<int> chunks;
 	vector<string> hashes;
 };
@@ -91,6 +93,91 @@ void processcommand(char *a[],char cmd[])
 	return;
 }
 
+void uplpoadsharableinfo(int sockfd)
+{
+	char s2[1000];
+	char s1[100000];
+	char s[100000];
+	char ttip[100];
+
+	chunkdetail cdetail;
+	//string s2;
+ 	//while ((n = recv( sockfd , s ,sizeof(s), 0)) > 0){
+	recv(sockfd, s2,sizeof(s2),0);
+	cout<<"uplpoadsharableinfo recieved filename "<<s2<<endl;
+	string ft(s2);
+	cdetail.filename = ft;
+	//cout<<"uplpoadsharableinfo filename at tracker "<<cdetail.filename<<endl;
+
+	int chunkcount = 0;
+	recv(sockfd, &chunkcount, sizeof(chunkcount),0);
+	cout<<"uplpoadsharableinfo recieved chunkcount "<<chunkcount<<endl;
+	cdetail.noofchunks = chunkcount;
+//	cout<<"chunkcount at tracker "<<cdetail.noofchunks<<endl;
+
+    char tes[10];
+    recv(sockfd, tes, sizeof(tes), 0);
+   	cout<<"test "<<tes<<endl;
+
+	int ttport;
+	recv(sockfd,&ttport,sizeof(ttport),0);
+	cout<<"uplpoadsharableinfo recieved port "<<ttport<<endl;
+	cdetail.port = ttport;
+//	cout<<"port at tracker "<<cdetail.port<<endl;
+
+	recv(sockfd, ttip,sizeof(ttip), 0);
+	cout<<"uplpoadsharableinfo recieved ip "<<ttip<<endl;
+	string tp(ttip);
+	cdetail.ip = tp;
+//	cout<<"ip at tracker "<<cdetail.ip<<endl;
+
+	for(int p = 0;p<chunkcount; p++)
+	{
+		int chunkv;
+		char h[20];
+
+		recv(sockfd,&chunkv, sizeof(chunkv), 0);
+		cout<<"uplpoadsharableinfo chunks at tracker "<<chunkv<<endl;
+		cdetail.chunks.push_back(chunkv);
+
+		recv(sockfd,h,sizeof(h),0);
+		string temp(h);
+		cout<<"uplpoadsharableinfo hashes at tracker "<<temp<<endl;
+		cdetail.hashes.push_back(temp);
+	}
+
+	int tgid;
+	recv(sockfd,&tgid,sizeof(tgid),0);
+	cout<<"uplpoadsharableinfo recieved group id "<<tgid<<endl;
+	cdetail.groupid = tgid;
+//	cout<<"uplpoadsharableinfo group id at tracker "<<cdetail.groupid<<endl;
+
+	ll size;
+	recv(sockfd,&size, sizeof(size),0);
+	cout<<"uplpoadsharableinfo recieved filesize "<<size<<endl;
+	cdetail.filesize = size;
+//	cout<<"filesize at tracker "<<cdetail.filesize<<endl;
+
+	vchunkdetail.push_back(cdetail);
+
+	fflush(stdin);
+	fflush(stdout);
+	memset(s,'\0',sizeof(s));
+	recv(sockfd , s ,sizeof(s), 0);
+
+	cout<<"uplpoadsharableinfo recieved s "<<s<<endl;
+	ofstream fileobj("client_info.txt",ios::out | ios::app);
+	//cout<<s<<endl;
+	strcpy(s1,s);
+	int len = strlen(s1);
+	s1[len]='\0';
+	cout<<s1<<endl;
+	fileobj<<s1;
+	fileobj<<'\n';
+
+	fileobj.close();
+}
+
 void* processthread(void *sockdesc)
 {
 	char command[1000];
@@ -134,8 +221,8 @@ void* processthread(void *sockdesc)
  			string st2(a[1]);
  			ud.userid = st1;
  			ud.password = st2;
- 			cout<<"uid "<<ud.userid<<endl;
- 			cout<<"pwd "<<ud.password<<endl;
+ 	//		cout<<"uid "<<ud.userid<<endl;
+ 	//		cout<<"pwd "<<ud.password<<endl;
  			vuser.push_back(ud);
  			fflush(stdin);
 			fflush(stdout);
@@ -419,11 +506,11 @@ void* processthread(void *sockdesc)
 					{
 						if(strcmp((*i).c_str(), a[1]) == 0)
 						{
-							cout<<"user id "<<(*i)<<endl;
+//							cout<<"user id "<<(*i)<<endl;
 							(*it).pendreqs.erase(i);
 							string st(*i);
 							(*it).userids.push_back(st);
-							cout<<"userid matched "<<st<<endl;
+//							cout<<"userid matched "<<st<<endl;
 							ispre =1;
 							break;
 						}
@@ -475,7 +562,7 @@ void* processthread(void *sockdesc)
 					{
 						if(strcmp(m->first.c_str(),a[1]) == 0)
 						{
-							cout<<"here in stop share"<<endl;
+	//						cout<<"here in stop share"<<endl;
 							m->second = false;
 						}
 					}
@@ -517,13 +604,13 @@ void* processthread(void *sockdesc)
 			cout<<"recieved filename "<<s2<<endl;
 			string ft(s2);
 			cdetail.filename = ft;
-			cout<<"filename at tracker "<<cdetail.filename<<endl;
+	//		cout<<"filename at tracker "<<cdetail.filename<<endl;
 
 			int chunkcount = 0;
 			recv(sockfd, &chunkcount, sizeof(chunkcount),0);
 			cout<<"recieved chunkcount "<<chunkcount<<endl;
 			cdetail.noofchunks = chunkcount;
-			cout<<"chunkcount at tracker "<<cdetail.noofchunks<<endl;
+	//		cout<<"chunkcount at tracker "<<cdetail.noofchunks<<endl;
 
 			char tes[10];
     		recv(sockfd, tes, sizeof(tes), 0);
@@ -533,13 +620,13 @@ void* processthread(void *sockdesc)
 			recv(sockfd,&ttport,sizeof(ttport),0);
 			cout<<"recieved port "<<ttport<<endl;
 			cdetail.port = ttport;
-			cout<<"port at tracker "<<cdetail.port<<endl;
+	//		cout<<"port at tracker "<<cdetail.port<<endl;
 
 			recv(sockfd, ttip,sizeof(ttip), 0);
 			cout<<"recieved ip "<<ttip<<endl;
 			string tp(ttip);
 			cdetail.ip = tp;
-			cout<<"ip at tracker "<<cdetail.ip<<endl;
+	//		cout<<"ip at tracker "<<cdetail.ip<<endl;
 
 			for(int p = 0;p<chunkcount; p++)
 			{
@@ -560,7 +647,13 @@ void* processthread(void *sockdesc)
 			recv(sockfd,&tgid,sizeof(tgid),0);
 			cout<<"recieved group id "<<tgid<<endl;
 			cdetail.groupid = tgid;
-			cout<<"group id at tracker "<<cdetail.groupid<<endl;
+	//		cout<<"group id at tracker "<<cdetail.groupid<<endl;
+
+			ll size;
+			recv(sockfd,&size, sizeof(size),0);
+			cout<<"recieved filesize "<<size<<endl;
+			cdetail.filesize = size;
+	//		cout<<"filesize at tracker "<<cdetail.filesize<<endl;
 
 			vchunkdetail.push_back(cdetail);
 
@@ -645,14 +738,14 @@ void* processthread(void *sockdesc)
 			{
 				if((*it).groupid == gid)
 				{
-					cout<<"group id "<<(*it).groupid<<" "<<gid<<endl;
+	//				cout<<"group id "<<(*it).groupid<<" "<<gid<<endl;
 					vector<string>::iterator s;
 					for(s = (*it).userids.begin(); s!=(*it).userids.end(); s++)
 					{
-						cout<<"globaluserid "<<globaluserid<<endl;
+	//					cout<<"globaluserid "<<globaluserid<<endl;
 						if((*s) == globaluserid)
 						{
-							cout<<"same group check"<<endl;
+	//						cout<<"same group check"<<endl;
 							issamegroup = 1;
 							break;
 						}
@@ -679,7 +772,7 @@ void* processthread(void *sockdesc)
 					{
 						if(strcmp(sf->first.c_str(),s) == 0 && sf->second == true)
 						{
-							cout<<"sharable check"<<endl;
+	//						cout<<"sharable check"<<endl;
 							issharable = 1;
 							break;
 						}
@@ -756,8 +849,18 @@ void* processthread(void *sockdesc)
 						cout<<"hash sent from tracker "<<hs<<endl;
 						send(sockfd, hs, sizeof(hs), 0);
 					}
+
+					ll vsize = (*cd).filesize;
+					cout<<"filesize sent from tracker "<<vsize<<endl;
+					send(sockfd, &vsize, sizeof(vsize), 0);
 				}
 			}
+
+			uplpoadsharableinfo(sockfd);
+
+			char tes1[100];
+    		recv(sockfd, tes1, sizeof(tes1), 0);
+    		cout<<"test "<<tes1<<endl;
 
 		}
 		memset(command,'\0',sizeof(command));
