@@ -68,6 +68,7 @@ FILE *fpc;
 char sc[100000];
 ll filesz;
 string globaluserid;
+int isnotintegrated = 0;
 
 string ToString(char* a, int size) 
 { 
@@ -170,51 +171,40 @@ void *sendfile(void *socket_desc)
       	    return 0;
     	}
    		pthread_detach(ctid);
-	/*	char filename[1000];
-		cout<<"before receiving filename"<<endl;
-		recv(clientfd, &filename, sizeof(filename), 0);
-		cout<<"filename "<<filename<<endl;
-	//	pthread_mutex_lock(&mtx);
-		FILE *fp = fopen(filename,"r");
-		cout<<"filename matched"<<endl;
-		int chunknumber;
-		recv(clientfd,&chunknumber,sizeof(chunknumber),0);
-		cout<<"chunk number from client sernder "<<chunknumber<<endl;
-
-		ll offset = chunk_size*(chunknumber);
-		cout<<"offset from client sender "<<offset<<endl;
-		int off = fseek(fp,offset,SEEK_SET);
-		char Buffer[chunk_size];
-		int len = fread(Buffer, sizeof(char) ,sizeof(Buffer), fp);
-
-		fseek(fp,offset,SEEK_SET);
-		char newBuffer[2048];
-		cout<<"size from client sender "<<len<<endl;
-		send(clientfd,&len,sizeof(len),0);
-		int n = 0;
-		while ((n = fread(newBuffer, sizeof(char), sizeof(newBuffer) , fp)) > 0  && len > 0 )
-		{
-			send(clientfd, &n, sizeof(n), 0);
-			newBuffer[n] = '\0';
-			send(clientfd, newBuffer, n, 0 );
-   			memset(newBuffer , '\0', sizeof(newBuffer));
-			len = len - n;
-			cout<<"remaining size from client sender "<<len<<endl;
-		}
-					//	cout<<"size of new buffer "<<sizeof(newBuffer)<<endl			
-    	memset( Buffer , '\0', sizeof(Buffer));
-    	rewind(fp);		
-		fclose(fp);
-	//	pthread_mutex_lock(&mtx);
-		memset(filename ,'\0',sizeof(filename)); */
 	}
 //	close(clientfd);
 	close(sockfd);
 }
 
+void* fileintegritycheck(void *integritystruct)
+{
+	fileintegrity fint = *((fileintegrity*) (integritystruct));
+	unsigned char hash[chunk_size];
+  	string hashed="";
+  	cout<<"size of fint hash "<<sizeof(fint.hashbuf)<<endl;
+	SHA1(fint.hashbuf, sizeof(fint.hashbuf) - 1, hash);
+    for (int i = 0; i < 10; i++) {
+    	char buf[100];
+        sprintf((char*)&buf,"%02x", hash[i]);
+    //		cout<<"buf "<<buf<<endl;
+        string t(buf);
+        hashed = hashed + t;
+  	//	cout<<"hashed first "<<hashed<<endl;
+    }
+    cout<<"hashed at integrity check "<<hashed<<endl;
+    cout<<"previous hash "<<fint.hashst<<endl;
+    if(hashed != fint.hashst)
+    {
+    	isnotintegrated = 1;
+    }
+    cout<<"Integrity checked"<<endl;
+ //   memset(hash,'\0',sizeof(hash));
+ //   memset(fint.hashbuf,'\0',sizeof(fint.hashbuf));
+}
+
 void *recievefile(void *chunkstruct)
 {
-    chunkdetail cdetail = *( (chunkdetail*) (chunkstruct) );
+    chunkdetail cdetail = *( (chunkdetail*) (chunkstruct));
 	cout<<"here at recievefile"<<endl;
 	int sockfd = socket( AF_INET, SOCK_STREAM, 0 );
 	struct sockaddr_in  addr, peer_addr;
@@ -260,8 +250,10 @@ void *recievefile(void *chunkstruct)
 	ll offset = chunk_size*chunknumber;
 	cout<<"offset in client recver "<<offset<<endl;
 	int off = fseek(fpc,offset,SEEK_SET);
-
-	fileintegrity fi;
+//	fileintegrity fi;
+//	memset(fi.hashbuf,'\0',sizeof(fi.hashbuf));
+	unsigned char hashbuf[chunk_size];
+	size_t j =0;
 	while(size > 0)
 	{
 		int t1=0,t2=0;
@@ -272,13 +264,17 @@ void *recievefile(void *chunkstruct)
 
 		send(sockfd,&t1,sizeof(t1),0);
 
-		char Buffer[buflen];
+		unsigned char Buffer[buflen];
 		recv(sockfd,Buffer,sizeof(Buffer) , 0);
 
 		Buffer[buflen] = '\0';
 		fwrite (Buffer, sizeof(char), sizeof(Buffer), fpc);
 
-	//	strcat(fi.hashbuf,Buffer);
+		//strcat((char*)fi.hashbuf,(const char*)Buffer);
+	//	cout<<"here concat of signed and unsigned "<<endl;
+		memcpy(hashbuf+j,Buffer, sizeof(Buffer));
+		j = j + sizeof(Buffer);
+	//	cout<<"concat done "<<j<<endl; 
 
     	memset( Buffer , '\0', sizeof(Buffer));
     	size = size - buflen;
@@ -286,6 +282,33 @@ void *recievefile(void *chunkstruct)
 
     	send(sockfd, &t2, sizeof(t2), 0);
 	}	 
+
+	cout<<"hash at chunkdetail "<<chunknumber<<" is "<<cdetail.hashes.at(chunknumber)<<endl;
+//	fi.hashst = cdetail.hashes.at(chunknumber);
+
+	unsigned char hash[chunk_size];
+  	string hashed="";
+  	SHA1(hashbuf, sizeof(hashbuf) - 1, hash);
+    for (int i = 0; i < 10; i++) {
+    	char buf[100];
+        sprintf((char*)&buf,"%02x", hash[i]);
+        	//		cout<<"buf "<<buf<<endl;
+       // strcat(s,buf);
+        string t(buf);
+        hashed = hashed + t;
+        	//		cout<<"hashed first "<<hashed<<endl;
+    }
+
+    if(hashed == cdetail.hashes.at(chunknumber))
+    {
+    	isnotintegrated = 0;
+   		cout<<"hash matched"<<endl;
+    }
+    else
+    {
+    	isnotintegrated = 1;
+    	cout<<"hash not matched"<<endl;
+    }
 //	fclose(fpc);
 	memset(sc, '\0', sizeof(sc));
 	close(sockfd);
@@ -363,6 +386,7 @@ int main(int argc, char** argv)
 	//pthread_t ctid[60];
 	//int j=0;
 	int isloggedin = 0;
+	int ifprelim = 0;
 	while(1)
 	{
 		if(pthread_create( &tid[i] , NULL ,  sendfile , (void*) &sockfd) < 0)
@@ -403,6 +427,7 @@ int main(int argc, char** argv)
 
  		if(strcmp(a[0],"create_user") == 0)
  		{
+ 			int ifprelim = 1;
  			int iscorrect = 1;
  			char command[1000];
 			strcpy(command,"create_user");
@@ -426,21 +451,9 @@ int main(int argc, char** argv)
 			fflush(stdout);
  		}
 
- 	/*	if(strcmp(a[0],"test") == 0)
- 		{
- 			char command[1000];
-			strcpy(command,"test");
- 			send(sockfd , &command, sizeof(command), 0);
- 			string st1(a[1]);
- 			string st2(a[2]);
- 			string s = st1+" "+st2;
- 			char buffer[1000];
- 			strcpy(buffer,s.c_str());
- 			send(sockfd,buffer,sizeof(buffer), 0);
- 		} */
-
  		if(strcmp(a[0],"login") == 0)
  		{
+ 			int ifprelim = 1;
  			int iscorrect = 1;
  			char command[1000];
 			strcpy(command,"login");
@@ -472,6 +485,12 @@ int main(int argc, char** argv)
  		if(isloggedin == 0)
  		{
  			cout<<"User is not logged in"<<endl;
+ 			continue;
+ 		}
+
+ 		if(ifprelim == 1)
+ 		{
+ 			ifprelim =0;
  			continue;
  		}
 
@@ -934,6 +953,15 @@ int main(int argc, char** argv)
 				}
 				k++;
 				count = 0;
+			}
+
+			if(isnotintegrated == 1)
+			{
+				cout<<"File has been corrupted"<<endl;
+			}
+			else
+			{
+				cout<<"File is perfect"<<endl;
 			}
 
 			fflush(stdin);
