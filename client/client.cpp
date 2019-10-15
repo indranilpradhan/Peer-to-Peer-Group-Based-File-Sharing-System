@@ -153,17 +153,17 @@ void *sendfilebychunks(void *clientfd_desc)
 
 	int chunknumber= 0;
 	recv(clientfd,&chunknumber,sizeof(chunknumber),0);
-//	cout<<"chunk number from client sernder "<<chunknumber<<endl;
+	cout<<"chunk number from client sernder "<<chunknumber<<endl;
 
 	ll offset = chunk_size*(chunknumber);
-//	cout<<"offset from client sender "<<offset<<endl;
+	cout<<"offset from client sender "<<offset<<endl;
 	int off = fseek(fp,offset,SEEK_SET);
 	char Buffer[chunk_size];
 	int len = fread(Buffer, sizeof(char) ,sizeof(Buffer), fp);
 
 	fseek(fp,offset,SEEK_SET);
 	char newBuffer[2048];
-//	cout<<"size from client sender "<<len<<endl;
+	cout<<"size from client sender "<<len<<endl;
 	send(clientfd,&len,sizeof(len),0);
 	int n = 0;
 	while ((n = fread(newBuffer, sizeof(char), sizeof(newBuffer) , fp)) > 0  && len > 0 )
@@ -177,7 +177,7 @@ void *sendfilebychunks(void *clientfd_desc)
 		send(clientfd, newBuffer, n, 0 );
    		memset(newBuffer , '\0', sizeof(newBuffer));
 		len = len - n;
-//		cout<<"remaining size from client sender "<<len<<endl;
+		cout<<"remaining size from client sender "<<len<<endl;
 
 		recv(clientfd,&t2,sizeof(t2),0);
 	}
@@ -204,7 +204,7 @@ void *sendfile(void *socket_desc)
 //	cout<<"listening port "<<portadd<<endl;
 	//cout<<"addrlen "<<addrlen<<endl;
 	bind (sockfd, (struct sockaddr *)&addr, sizeof(addr));
-	cout<<"listening sockfd "<<sockfd<<endl; 
+//	cout<<"listening sockfd "<<sockfd<<endl; 
 	int l=listen (sockfd, 3); 
 //	cout<<"l "<<l<<endl;
 	int clientfd;
@@ -230,7 +230,7 @@ void *sendfile(void *socket_desc)
 void *recievefile(void *chunkstruct)
 {
     chunkdetail cdetail = *( (chunkdetail*) (chunkstruct));
-	cout<<"here at recievefile"<<endl;
+//	cout<<"here at recievefile"<<endl;
 	int sockfd = socket( AF_INET, SOCK_STREAM, 0 );
 	struct sockaddr_in  addr, peer_addr;
 	bzero(&addr, sizeof(addr));
@@ -257,7 +257,7 @@ void *recievefile(void *chunkstruct)
 
 	char cfile[100];
 	strcpy(cfile,cdetail.filename.c_str());
-//	cout<<"file name sent from client recver "<<cfile<<endl;
+	cout<<"file name sent from client recver "<<cfile<<endl;
 	send(sockfd,&cfile,sizeof(cfile),0);
 
 	int t;
@@ -265,7 +265,7 @@ void *recievefile(void *chunkstruct)
 //	cout<<" after test"<<endl;
 
 	int chunknumber = cdetail.chunknumber;
-//	cout<<"chunknumber sent from client recver "<<chunknumber<<endl;
+	cout<<"chunknumber sent from client recver "<<chunknumber<<endl;
 	send(sockfd, &chunknumber,sizeof(chunknumber),0);
 
 	int size = 0;
@@ -285,7 +285,7 @@ void *recievefile(void *chunkstruct)
 
 		int buflen;
 		recv(sockfd,&buflen,sizeof(buflen),0);
-//		cout<<"buflen in client recver "<<buflen<<endl;
+		cout<<"buflen in client recver "<<buflen<<endl;
 
 		send(sockfd,&t1,sizeof(t1),0);
 
@@ -303,7 +303,7 @@ void *recievefile(void *chunkstruct)
 
     	memset( Buffer , '\0', sizeof(Buffer));
     	size = size - buflen;
-//	   	cout<<"remaining size "<<size<<endl;
+	   	cout<<"remaining size "<<size<<endl;
 
     	send(sockfd, &t2, sizeof(t2), 0);
 	}	 
@@ -808,7 +808,7 @@ int main(int argc, char** argv)
     			cout<<"chunks at client "<<q<<endl;
     			send(sockfd,&q,sizeof(q),0);
     			strcpy(thash,hashes.at(e).c_str());
-    			cout<<"hash at client "<<thash<<endl;
+    	//		cout<<"hash at client "<<thash<<endl;
     			send(sockfd,thash,sizeof(thash), 0);
     		}
 
@@ -853,7 +853,7 @@ int main(int argc, char** argv)
 
 		else if(strcmp(a[0],"download_file")==0)
 		{
-			cout<<"download"<<endl;
+		//	cout<<"download"<<endl;
 			char command[1000];
 			int issamegroup = 0;
 			int issharable = 0;
@@ -893,6 +893,8 @@ int main(int argc, char** argv)
    			fpc = fopen(filepath,"w");
 
 			recv(sockfd, &countpeer, sizeof(countpeer), 0);
+
+			cout<<"countpeer at client "<<countpeer<<endl;
 			for(int i=0; i<countpeer; i++)
 			{
 				chunkdetail cdetail;
@@ -902,7 +904,7 @@ int main(int argc, char** argv)
 				cout<<"filename recved from tracker "<<vfile<<endl;
 				string sfile(vfile);
 				cdetail.filename = sfile;
-//				cout<<"filename inserted to clietn struct "<<cdetail.filename<<endl;
+	//			cout<<"filename inserted to clietn struct "<<cdetail.filename<<endl;
 
 				int vport;
 				recv(sockfd, &vport, sizeof(vport), 0);
@@ -1111,7 +1113,7 @@ int main(int argc, char** argv)
 		}
 		fflush(stdin);
 		fflush(stdout);
-		cout<<"end"<<endl;
+	//	cout<<"end"<<endl;
 	}
 //	pthread_join( thread1 , NULL);
 	close( sockfd);
