@@ -35,6 +35,7 @@ public:
 
 struct chunkdetail{
 public:
+	string userid;
 	string filename;
 	int port;
 	string ip;
@@ -596,11 +597,17 @@ void* processthread(void *sockdesc)
 			char s1[100000];
 			char s2[100];
 			char ttip[100];
+			char tuid[100];
 			int isgrppre = 0;
 			int isfilepre = 0;
 			chunkdetail cdetail;
 	//string s2;
  	//while ((n = recv( sockfd , s ,sizeof(s), 0)) > 0){
+			recv(sockfd,tuid,sizeof(tuid),0);
+    		cout<<"recved userid "<<tuid<<endl;
+    		string fuid(tuid);
+    		cdetail.userid = fuid; 
+    		
 			recv(sockfd, s2,sizeof(s2),0);
 			cout<<"recieved filename "<<s2<<endl;
 			string ft(s2);
@@ -791,7 +798,18 @@ void* processthread(void *sockdesc)
 			for(cd = vchunkdetail.begin(); cd != vchunkdetail.end(); cd++)
 			{
 				if(strcmp(s, (*cd).filename.c_str())==0 && (*cd).groupid == gid)
-					countpeer++;
+				{
+				//	int checklogin=1;
+					vector<userdetail>::iterator vu;
+					for(vu = vuser.begin(); vu != vuser.end(); vu++)
+					{
+						if((*vu).userid == (*cd).userid && (*vu).islogin == true)
+						{
+							countpeer++;
+						}
+					}
+					
+				}
 			}
 			send(sockfd,&countpeer, sizeof(countpeer), 0);
 
@@ -816,6 +834,20 @@ void* processthread(void *sockdesc)
 			{
 				if(strcmp(s, (*cd).filename.c_str())==0 && (*cd).groupid == gid)
 				{
+					int checklogin=1;
+					vector<userdetail>::iterator vu;
+					for(vu = vuser.begin(); vu != vuser.end(); vu++)
+					{
+						if((*vu).userid == (*cd).userid && (*vu).islogin == false)
+						{
+							checklogin = 0;
+							break;
+						}
+					}
+
+					if(checklogin == 0)
+						continue;
+
 					char vfile[100];
 					strcpy(vfile,(*cd).filename.c_str());
 					cout<<"filename sent from tracker "<<vfile<<endl;
@@ -960,11 +992,11 @@ void* processthread(void *sockdesc)
 			ufileobj<<us1;
 			ufileobj<<'\n';
 
-			ufileobj.close();
+			ufileobj.close(); */
 
 			// char tes1[100];
    //  		recv(sockfd, tes1, sizeof(tes1), 0);
-   //  		cout<<"test "<<tes1<<endl;  */
+   //  		cout<<"test "<<tes1<<endl; 
 
 		}
 		memset(command,'\0',sizeof(command));

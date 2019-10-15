@@ -696,7 +696,7 @@ int main(int argc, char** argv)
  		else if(strcmp(a[0],"logout") == 0)
  		{
  			char command[1000];
-			strcpy(command,"stop_share");
+			strcpy(command,"logout");
  			send(sockfd , &command, sizeof(command), 0);
  			
  			isloggedin = 0;	
@@ -777,7 +777,12 @@ int main(int argc, char** argv)
 
     		char s2[100];
     		char tip[100];
+    		char uid[100];
     //		cout<<"641"<<endl;
+    		strcpy(uid,globaluserid.c_str());
+    		cout<<"globaluserid at client "<<uid<<endl;
+    		send(sockfd,uid,sizeof(uid),0);
+
     		strcpy(s2,a[1]);
     		cout<<"filename at client "<<s2<<endl;
     		send(sockfd,s2,sizeof(s2),0);
@@ -999,7 +1004,7 @@ int main(int argc, char** argv)
 			fflush(stdin);
 			fflush(stdout);
 
-	/*		tdetail.groupid = gid;
+			tdetail.groupid = gid;
 			string stfile(a[2]);
 			tdetail.filename = stfile;
 			string stip(ip);
@@ -1009,7 +1014,7 @@ int main(int argc, char** argv)
 			tdetail.filesize = filesize;
 
 	//		sharablefile(sockfd, tdetail);
-			char tes1[] = "hello";
+	/*		char tes1[] = "hello";
      		send(sockfd, tes1, sizeof(tes1), 0);
    		 
 			int x;
