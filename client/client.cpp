@@ -326,14 +326,14 @@ void *recievefile(void *chunkstruct)
     if(hashed == cdetail.hashes.at(chunknumber))
     {
     	isnotintegrated = 0;
-   		cout<<"hash matched"<<endl;
+  // 		cout<<"hash matched"<<endl;
    		tempchunks.at(chunknumber) = 1;
    		temphashes.at(chunknumber) = hashed;
     }
     else
     {
     	isnotintegrated = 1;
-    	cout<<"hash not matched"<<endl;
+ //   	cout<<"hash not matched"<<endl;
     }
 //	fclose(fpc);
 	memset(sc, '\0', sizeof(sc));
