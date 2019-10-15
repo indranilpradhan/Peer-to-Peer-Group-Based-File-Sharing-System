@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <openssl/sha.h>
 #include <pthread.h>
+#include <time.h>
 
 using namespace std;
 #define chunk_size 524288
@@ -47,16 +48,14 @@ public:
 	vector<int> chunks;
 	vector<string> hashes;
 	int chunknumber;
-};
-
-struct fileintegrity
-{
-	unsigned char hashbuf[chunk_size];
-	string hashst;
+	ll filesize;
 };
 
 vector<Package> v;
 vector<chunkdetail> vchunkdetail;
+//vector<chunkshashes> vchhs;
+vector<int> tempchunks;
+vector<string> temphashes;
 
 int counter = 0;
 pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
@@ -85,34 +84,86 @@ void stringtochararray(string st, char* arr)
     strcpy(arr, st.c_str());
 }
 
+/*void sharablefile(int sockfd, chunkdetail tdetail)
+{
+	char s2[1000];
+	char tip[100];
+	strcpy(s2,tdetail.filename.c_str());
+    cout<<"sharablefile filename at client "<<s2<<endl;
+    send(sockfd,s2,sizeof(s2),0);
+    //		cout<<"644"<<endl;
+    int chunkcount = tdetail.noofchunks;
+    cout<<"sharablefile chunkcount at client "<<chunkcount<<endl;
+    send(sockfd,&chunkcount, sizeof(chunkcount),0);
+    //		cout<<"646"<<endl;
+    char tes[]="hello";
+    send(sockfd, tes, sizeof(tes), 0);
+
+    int tport = tdetail.port;
+    cout<<"sharablefile port at client "<<tport<<endl;
+    send(sockfd, &tport, sizeof(tport), 0);
+    //		cout<<"649"<<endl;
+    strcpy(tip,tdetail.ip.c_str());
+    cout<<"sharablefile ip at client "<<tip<<endl;
+    send(sockfd, tip, sizeof(tip), 0);
+    //		cout<<"652"<<endl;
+    string temp="";
+    for(int e = 0;e<chunkcount;e++)
+    {
+    	int q= tempchunks.at(e);
+    	cout<<"sharablefile chunks at client "<<q<<endl;
+    	send(sockfd,&q,sizeof(q),0);
+
+    	char thash[20];
+    	temp = temp+temphashes.at(e);
+    	strcpy(thash,temphashes.at(e).c_str());
+    	cout<<"sharablefile hash at client "<<thash<<endl;
+    	send(sockfd,thash,sizeof(thash), 0);
+    }
+
+    int gid = tdetail.groupid;
+    cout<<"sharablefile group id at client "<<gid<<endl;
+    send(sockfd, &gid, sizeof(gid), 0);
+
+    ll size = tdetail.filesize;
+    cout<<"sharablefile filesize at client "<<size<<endl;
+    send(sockfd, &size, sizeof(size),0);
+
+    string finalst = globaluserid+" "+to_string(gid)+" "+tdetail.ip+" "+to_string(tdetail.port)+" "+tdetail.filename+" "+to_string(size)+" "+temp;
+    char sendingchar[100000];
+    cout<<"sharablefile final string at client "<<finalst<<endl;
+    strcpy(sendingchar,finalst.c_str());
+    send(sockfd, &sendingchar, sizeof(sendingchar),0);
+} */
+
 void *sendfilebychunks(void *clientfd_desc)
 {
 	int clientfd = *((int *) clientfd_desc);
 	char filename[1000];
-	cout<<"before receiving filename"<<endl;
+//	cout<<"before receiving filename"<<endl;
 	recv(clientfd, &filename, sizeof(filename), 0);
-	cout<<"filename "<<filename<<endl;
+//	cout<<"filename "<<filename<<endl;
 	//	pthread_mutex_lock(&mtx);
 	FILE *fp = fopen(filename,"r");
-	cout<<"filename matched"<<endl;
+//	cout<<"filename matched"<<endl;
 
 	int t =0;
 	send(clientfd, &t, sizeof(t),0);
-	cout<<" after test"<<endl;
+//	cout<<" after test"<<endl;
 
 	int chunknumber= 0;
 	recv(clientfd,&chunknumber,sizeof(chunknumber),0);
-	cout<<"chunk number from client sernder "<<chunknumber<<endl;
+//	cout<<"chunk number from client sernder "<<chunknumber<<endl;
 
 	ll offset = chunk_size*(chunknumber);
-	cout<<"offset from client sender "<<offset<<endl;
+//	cout<<"offset from client sender "<<offset<<endl;
 	int off = fseek(fp,offset,SEEK_SET);
 	char Buffer[chunk_size];
 	int len = fread(Buffer, sizeof(char) ,sizeof(Buffer), fp);
 
 	fseek(fp,offset,SEEK_SET);
 	char newBuffer[2048];
-	cout<<"size from client sender "<<len<<endl;
+//	cout<<"size from client sender "<<len<<endl;
 	send(clientfd,&len,sizeof(len),0);
 	int n = 0;
 	while ((n = fread(newBuffer, sizeof(char), sizeof(newBuffer) , fp)) > 0  && len > 0 )
@@ -126,7 +177,7 @@ void *sendfilebychunks(void *clientfd_desc)
 		send(clientfd, newBuffer, n, 0 );
    		memset(newBuffer , '\0', sizeof(newBuffer));
 		len = len - n;
-		cout<<"remaining size from client sender "<<len<<endl;
+//		cout<<"remaining size from client sender "<<len<<endl;
 
 		recv(clientfd,&t2,sizeof(t2),0);
 	}
@@ -160,10 +211,10 @@ void *sendfile(void *socket_desc)
 
 	while(1)
 	{
-		cout<<"here at listening"<<endl;
+//		cout<<"here at listening"<<endl;
 		int addrlen = sizeof(sockaddr_in);
 		clientfd = accept(sockfd , (struct sockaddr *)&address , (socklen_t*)&addrlen);
-		cout<<"clientfd "<<clientfd<<endl;
+//		cout<<"clientfd "<<clientfd<<endl;
 		pthread_t ctid;
 		if(pthread_create( &ctid , NULL, sendfilebychunks, (void*) &clientfd) < 0)
     	{
@@ -174,32 +225,6 @@ void *sendfile(void *socket_desc)
 	}
 //	close(clientfd);
 	close(sockfd);
-}
-
-void* fileintegritycheck(void *integritystruct)
-{
-	fileintegrity fint = *((fileintegrity*) (integritystruct));
-	unsigned char hash[chunk_size];
-  	string hashed="";
-  	cout<<"size of fint hash "<<sizeof(fint.hashbuf)<<endl;
-	SHA1(fint.hashbuf, sizeof(fint.hashbuf) - 1, hash);
-    for (int i = 0; i < 10; i++) {
-    	char buf[100];
-        sprintf((char*)&buf,"%02x", hash[i]);
-    //		cout<<"buf "<<buf<<endl;
-        string t(buf);
-        hashed = hashed + t;
-  	//	cout<<"hashed first "<<hashed<<endl;
-    }
-    cout<<"hashed at integrity check "<<hashed<<endl;
-    cout<<"previous hash "<<fint.hashst<<endl;
-    if(hashed != fint.hashst)
-    {
-    	isnotintegrated = 1;
-    }
-    cout<<"Integrity checked"<<endl;
- //   memset(hash,'\0',sizeof(hash));
- //   memset(fint.hashbuf,'\0',sizeof(fint.hashbuf));
 }
 
 void *recievefile(void *chunkstruct)
@@ -222,7 +247,7 @@ void *recievefile(void *chunkstruct)
 
 	peer_addr.sin_family = AF_INET;
 	peer_addr.sin_port = htons(cdetail.port);
-	cout<<"141 server port "<<cdetail.port<<" server ip "<<cdetail.ip<<endl;
+//	cout<<"141 server port "<<cdetail.port<<" server ip "<<cdetail.ip<<endl;
 	peer_addr.sin_addr.s_addr=inet_addr(cdetail.ip.c_str());
 	if(connect(sockfd, (struct sockaddr *)&peer_addr, sizeof(peer_addr)) != 0)
 	{
@@ -232,23 +257,23 @@ void *recievefile(void *chunkstruct)
 
 	char cfile[100];
 	strcpy(cfile,cdetail.filename.c_str());
-	cout<<"file name sent from client recver "<<cfile<<endl;
+//	cout<<"file name sent from client recver "<<cfile<<endl;
 	send(sockfd,&cfile,sizeof(cfile),0);
 
 	int t;
 	recv(sockfd, &t,sizeof(t),0);
-	cout<<" after test"<<endl;
+//	cout<<" after test"<<endl;
 
 	int chunknumber = cdetail.chunknumber;
-	cout<<"chunknumber sent from client recver "<<chunknumber<<endl;
+//	cout<<"chunknumber sent from client recver "<<chunknumber<<endl;
 	send(sockfd, &chunknumber,sizeof(chunknumber),0);
 
 	int size = 0;
 	recv(sockfd,&size,sizeof(size),0);
-	cout<<"size in client recver "<<size<<endl;
+//	cout<<"size in client recver "<<size<<endl;
 
 	ll offset = chunk_size*chunknumber;
-	cout<<"offset in client recver "<<offset<<endl;
+//	cout<<"offset in client recver "<<offset<<endl;
 	int off = fseek(fpc,offset,SEEK_SET);
 //	fileintegrity fi;
 //	memset(fi.hashbuf,'\0',sizeof(fi.hashbuf));
@@ -260,7 +285,7 @@ void *recievefile(void *chunkstruct)
 
 		int buflen;
 		recv(sockfd,&buflen,sizeof(buflen),0);
-		cout<<"buflen in client recver "<<buflen<<endl;
+//		cout<<"buflen in client recver "<<buflen<<endl;
 
 		send(sockfd,&t1,sizeof(t1),0);
 
@@ -278,12 +303,12 @@ void *recievefile(void *chunkstruct)
 
     	memset( Buffer , '\0', sizeof(Buffer));
     	size = size - buflen;
-    	cout<<"remaining size "<<size<<endl;
+//	   	cout<<"remaining size "<<size<<endl;
 
     	send(sockfd, &t2, sizeof(t2), 0);
 	}	 
 
-	cout<<"hash at chunkdetail "<<chunknumber<<" is "<<cdetail.hashes.at(chunknumber)<<endl;
+//	cout<<"hash at chunkdetail "<<chunknumber<<" is "<<cdetail.hashes.at(chunknumber)<<endl;
 //	fi.hashst = cdetail.hashes.at(chunknumber);
 
 	unsigned char hash[chunk_size];
@@ -293,7 +318,6 @@ void *recievefile(void *chunkstruct)
     	char buf[100];
         sprintf((char*)&buf,"%02x", hash[i]);
         	//		cout<<"buf "<<buf<<endl;
-       // strcat(s,buf);
         string t(buf);
         hashed = hashed + t;
         	//		cout<<"hashed first "<<hashed<<endl;
@@ -303,6 +327,8 @@ void *recievefile(void *chunkstruct)
     {
     	isnotintegrated = 0;
    		cout<<"hash matched"<<endl;
+   		tempchunks.at(chunknumber) = 1;
+   		temphashes.at(chunknumber) = hashed;
     }
     else
     {
@@ -423,11 +449,11 @@ int main(int argc, char** argv)
        		b = strtok(NULL," \n");
     	}
     	a[i]=NULL;
- 		cout<<"here "<<a[0]<<endl;
+ 	//	cout<<"here "<<a[0]<<endl;
 
  		if(strcmp(a[0],"create_user") == 0)
  		{
- 			int ifprelim = 1;
+ 			ifprelim = 1;
  			int iscorrect = 1;
  			char command[1000];
 			strcpy(command,"create_user");
@@ -453,7 +479,7 @@ int main(int argc, char** argv)
 
  		if(strcmp(a[0],"login") == 0)
  		{
- 			int ifprelim = 1;
+ 			ifprelim = 1;
  			int iscorrect = 1;
  			char command[1000];
 			strcpy(command,"login");
@@ -688,7 +714,7 @@ int main(int argc, char** argv)
  			vector<int> chunks;
  			vector<string> hashes;
 			Package p;
-  			cout<<"filename "<<a[1]<<endl;
+  	//		cout<<"filename "<<a[1]<<endl;
   			FILE *fp = fopen ( a[1]  , "r" );
 
 			fseek ( fp , 0 , SEEK_END);
@@ -717,7 +743,7 @@ int main(int argc, char** argv)
   				chunkcount = size/chunk_size;
   				chunkcount = chunkcount + 1;
   			}
-  			cout<<"chunkcount "<<chunkcount<<endl;
+  	//		cout<<"chunkcount "<<chunkcount<<endl;
   			chunks.assign(chunkcount,0);
   			hashes.assign(chunkcount,"");
   			int m = 0;
@@ -785,6 +811,10 @@ int main(int argc, char** argv)
     		cout<<"group id at client "<<gid<<endl;
     		send(sockfd, &gid, sizeof(gid), 0);
 
+    		ll tempsize = p.filesize;
+    		cout<<"file size at client "<<tempsize<<endl;
+    		send(sockfd, &tempsize, sizeof(tempsize),0);
+
     		fflush(stdin);
 			fflush(stdout);
 			char s1[100000];
@@ -824,8 +854,10 @@ int main(int argc, char** argv)
 			int issharable = 0;
 			int countpeer = 0;
 			int noofchunks =0;
+			ll filesize;
 			char filepath[1000];
 			vector<chunkdetail> lchunkdetail;
+			chunkdetail tdetail;
 
  			strcpy(command,"download_file");
  			send(sockfd , &command, sizeof(command), 0);
@@ -865,27 +897,27 @@ int main(int argc, char** argv)
 				cout<<"filename recved from tracker "<<vfile<<endl;
 				string sfile(vfile);
 				cdetail.filename = sfile;
-				cout<<"filename inserted to clietn struct "<<cdetail.filename<<endl;
+//				cout<<"filename inserted to clietn struct "<<cdetail.filename<<endl;
 
 				int vport;
 				recv(sockfd, &vport, sizeof(vport), 0);
 				cout<<"port recved from tracker "<<vport<<endl;
 				cdetail.port = vport;
-				cout<<"port inserted to clietn struct "<<cdetail.port<<endl;
+//				cout<<"port inserted to clietn struct "<<cdetail.port<<endl;
 
 				char vip[100];
 				recv(sockfd,vip, sizeof(vip), 0);
 				cout<<"ip recved from tracker "<<vip<<endl;
 				string sip(vip);
 				cdetail.ip = vip;
-				cout<<"ip inserted to clietn struct "<<cdetail.ip<<endl;
+//				cout<<"ip inserted to clietn struct "<<cdetail.ip<<endl;
 				
 
 				int vnoofchunks;
 				recv(sockfd, &vnoofchunks, sizeof(vnoofchunks), 0);
 				cout<<"no of chunks recved from tracker "<<vnoofchunks<<endl;
 				cdetail.noofchunks = vnoofchunks;
-				cout<<"no of chunks inserted to clietn struct "<<cdetail.noofchunks<<endl;
+//				cout<<"no of chunks inserted to clietn struct "<<cdetail.noofchunks<<endl;
 				noofchunks = vnoofchunks;
 
 				for(int cin = 0; cin < vnoofchunks; cin++)
@@ -904,8 +936,17 @@ int main(int argc, char** argv)
 					cout<<"hash recved from tracker "<<shs<<endl;
 					cdetail.hashes.push_back(shs);
 				}
+
+				recv(sockfd, &filesize, sizeof(filesize), 0);
+				cout<<"filesize recved from tracker "<<filesize<<endl;
+				cdetail.filesize = filesize;
+//				cout<<"no of chunks inserted to clietn struct "<<cdetail.filesize<<endl;
+
 				lchunkdetail.push_back(cdetail);
 			}
+
+			tempchunks.assign(noofchunks,0);
+			temphashes.assign(noofchunks,"");
 
 			int temp[countpeer][noofchunks];
 			vector<chunkdetail>::iterator it;
@@ -943,7 +984,7 @@ int main(int argc, char** argv)
     	    				perror("could not create thread");
       	    				return 1;
     					}
-   						pthread_join(ctid, NULL);
+   						pthread_join(ctid,NULL);
 						next = j+1;
 						break;
 					}
@@ -954,6 +995,96 @@ int main(int argc, char** argv)
 				k++;
 				count = 0;
 			}
+
+			fflush(stdin);
+			fflush(stdout);
+
+	/*		tdetail.groupid = gid;
+			string stfile(a[2]);
+			tdetail.filename = stfile;
+			string stip(ip);
+			tdetail.ip = stip;
+			tdetail.port = portadd;
+			tdetail.noofchunks = noofchunks;
+			tdetail.filesize = filesize;
+
+	//		sharablefile(sockfd, tdetail);
+			char tes1[] = "hello";
+     		send(sockfd, tes1, sizeof(tes1), 0);
+   		 
+			int x;
+			char us2[1000];
+			char utip[100];
+
+	//		recv(sockfd,&x,sizeof(x),0);
+
+			strcpy(us2,tdetail.filename.c_str());
+    		cout<<"sharablefile filename at client "<<us2<<endl;
+    		send(sockfd,us2,sizeof(us2),0);
+
+    //		recv(sockfd,&x,sizeof(x),0);
+
+    		time_t my_time = time(NULL); 
+    		printf("time at client %s", ctime(&my_time));
+    //		cout<<"644"<<endl;
+    		int uchunkcount = tdetail.noofchunks;
+    		cout<<"sharablefile chunkcount at client "<<uchunkcount<<endl;
+    		send(sockfd,&uchunkcount, sizeof(uchunkcount),0);
+    //		cout<<"646"<<endl;
+    		// char tes[]="hello";
+    		// send(sockfd, tes, sizeof(tes), 0);
+    //		recv(sockfd,&x,sizeof(x),0);
+
+    		int utport = tdetail.port;
+    		cout<<"sharablefile port at client "<<utport<<endl;
+    		send(sockfd, &utport, sizeof(utport), 0);
+
+    //		recv(sockfd,&x,sizeof(x),0);
+    //		cout<<"649"<<endl;
+    		strcpy(utip,tdetail.ip.c_str());
+    		cout<<"sharablefile ip at client "<<utip<<endl;
+    		send(sockfd, utip, sizeof(utip), 0);
+
+    		//recv(sockfd,&x,sizeof(x),0);
+    //		cout<<"652"<<endl;
+    		string utemp="";
+    		for(int e = 0;e<uchunkcount;e++)
+    		{
+    			int uq= tempchunks.at(e);
+    			cout<<"sharablefile chunks at client "<<uq<<endl;
+    			send(sockfd,&uq,sizeof(uq),0);
+
+    	//		recv(sockfd,&x,sizeof(x),0);
+
+    			char uthash[20];
+    			utemp = utemp+temphashes.at(e);
+    			strcpy(uthash,temphashes.at(e).c_str());
+    			cout<<"sharablefile hash at client "<<uthash<<endl;
+    			send(sockfd,uthash,sizeof(uthash), 0);
+
+    	//		recv(sockfd,&x,sizeof(x),0);
+   			}
+
+    		int ugid = tdetail.groupid;
+    		cout<<"sharablefile group id at client "<<ugid<<endl;
+    		send(sockfd, &ugid, sizeof(ugid), 0);
+
+    	//	recv(sockfd,&x,sizeof(x),0);
+
+    		ll usize = tdetail.filesize;
+    		cout<<"sharablefile filesize at client "<<usize<<endl;
+    		send(sockfd, &usize, sizeof(usize),0);
+
+    	//	recv(sockfd,&x,sizeof(x),0);
+
+    		string finalst = globaluserid+" "+to_string(ugid)+" "+tdetail.ip+" "+to_string(tdetail.port)+" "+tdetail.filename+" "+to_string(usize)+" "+utemp;
+    		char sendingchar[100000];
+    		cout<<"sharablefile final string at client "<<finalst<<endl;
+    		strcpy(sendingchar,finalst.c_str());
+    		send(sockfd, &sendingchar, sizeof(sendingchar),0); 
+
+			temphashes.clear();
+			tempchunks.clear(); */
 
 			if(isnotintegrated == 1)
 			{

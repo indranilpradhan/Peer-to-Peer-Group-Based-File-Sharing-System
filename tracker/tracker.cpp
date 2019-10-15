@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <fstream> 
 #include <algorithm>
+#include <time.h>
 
 using namespace std;
 #define ll long long int
@@ -671,7 +672,7 @@ void* processthread(void *sockdesc)
 			strcpy(s1,s);
 			int len = strlen(s1);
 			s1[len]='\0';
-			cout<<s1<<endl;
+		//	cout<<s1<<endl;
 			fileobj<<s1;
 			fileobj<<'\n';
 			char* id = strtok(s," ");
@@ -856,11 +857,114 @@ void* processthread(void *sockdesc)
 				}
 			}
 
-			uplpoadsharableinfo(sockfd);
+		//	uplpoadsharableinfo(sockfd);
+		/*	int x=0;
 
 			char tes1[100];
-    		recv(sockfd, tes1, sizeof(tes1), 0);
-    		cout<<"test "<<tes1<<endl;
+     		recv(sockfd, tes1, sizeof(tes1), 0);
+     		cout<<"test "<<tes1<<endl;
+
+			char us2[1000];
+			char us1[100000];
+			char us[100000];
+			char uttip[100];
+
+			chunkdetail ucdetail;
+
+		//	send(sockfd,&x,sizeof(x),0);
+	//string s2;
+ 	//while ((n = recv( sockfd , s ,sizeof(s), 0)) > 0){
+			recv(sockfd, us2,sizeof(us2),0);
+			cout<<"uplpoadsharableinfo recieved filename "<<us2<<endl;
+			string uft(us2);
+			ucdetail.filename = uft;
+
+		//	send(sockfd,&x,sizeof(x),0);
+
+			time_t my_time = time(NULL); 
+  		    printf("time at tracker %s", ctime(&my_time));
+	//cout<<"uplpoadsharableinfo filename at tracker "<<cdetail.filename<<endl;
+
+			int uchunkcount = 0;
+			recv(sockfd, &uchunkcount, sizeof(uchunkcount),0);
+			cout<<"uplpoadsharableinfo recieved chunkcount "<<uchunkcount<<endl;
+			ucdetail.noofchunks = uchunkcount;
+//	cout<<"chunkcount at tracker "<<cdetail.noofchunks<<endl;
+		//	send(sockfd,&x,sizeof(x),0);
+    		// char tes[10];
+    		// recv(sockfd, tes, sizeof(tes), 0);
+   			// cout<<"test "<<tes<<endl;
+
+			int uttport;
+			recv(sockfd,&uttport,sizeof(uttport),0);
+			cout<<"uplpoadsharableinfo recieved port "<<uttport<<endl;
+			ucdetail.port = uttport;
+//	cout<<"port at tracker "<<cdetail.port<<endl;
+		//	send(sockfd,&x,sizeof(x),0);
+
+			recv(sockfd, uttip,sizeof(uttip), 0);
+			cout<<"uplpoadsharableinfo recieved ip "<<uttip<<endl;
+			string utp(uttip);
+			ucdetail.ip = utp;
+//	cout<<"ip at tracker "<<cdetail.ip<<endl;
+		//	send(sockfd,&x,sizeof(x),0);
+
+			for(int p = 0;p<uchunkcount; p++)
+			{
+				int uchunkv;
+				char uh[20];
+
+				recv(sockfd,&uchunkv, sizeof(uchunkv), 0);
+				cout<<"uplpoadsharableinfo chunks at tracker "<<uchunkv<<endl;
+				ucdetail.chunks.push_back(uchunkv);
+
+		//		send(sockfd,&x,sizeof(x),0);
+
+				recv(sockfd,uh,sizeof(uh),0);
+				string temp(uh);
+				cout<<"uplpoadsharableinfo hashes at tracker "<<temp<<endl;
+				ucdetail.hashes.push_back(temp);
+
+		//		send(sockfd,&x,sizeof(x),0);
+			}
+
+			int utgid;
+			recv(sockfd,&utgid,sizeof(utgid),0);
+			cout<<"uplpoadsharableinfo recieved group id "<<utgid<<endl;
+			ucdetail.groupid = utgid;
+//	cout<<"uplpoadsharableinfo group id at tracker "<<cdetail.groupid<<endl;
+		//	send(sockfd,&x,sizeof(x),0);
+
+			ll usize;
+			recv(sockfd,&usize, sizeof(usize),0);
+			cout<<"uplpoadsharableinfo recieved filesize "<<usize<<endl;
+			ucdetail.filesize = usize;
+//	cout<<"filesize at tracker "<<cdetail.filesize<<endl;
+
+			vchunkdetail.push_back(ucdetail);
+
+		//	send(sockfd,&x,sizeof(x),0);
+
+			fflush(stdin);
+			fflush(stdout);
+			memset(us,'\0',sizeof(us));
+			recv(sockfd , us ,sizeof(us), 0);
+
+			cout<<"uplpoadsharableinfo recieved s "<<us<<endl;
+			ofstream ufileobj("client_info.txt",ios::out | ios::app);
+	//cout<<s<<endl;
+			strcpy(us1,us);
+			int ulen = strlen(us1);
+			us1[ulen]='\0';
+		//	cout<<us1<<endl;
+			ufileobj<<us1;
+			ufileobj<<'\n';
+
+			ufileobj.close();
+
+			// char tes1[100];
+   //  		recv(sockfd, tes1, sizeof(tes1), 0);
+   //  		cout<<"test "<<tes1<<endl;  */
 
 		}
 		memset(command,'\0',sizeof(command));
